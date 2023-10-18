@@ -12,6 +12,5 @@ Contains any data raw and cleaned one.
 - [BodyFat.csv](Data/BodyFat.csv) raw data.
 - [newdata.csv](Data/newdata.csv) cleaned data.
 
-
-
-
+## ShinyApp Link
+Click on the following link and enter relevant body measurements to predict your body fat rate.
