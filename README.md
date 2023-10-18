@@ -5,7 +5,7 @@ Project for UW-Madison STAT 628 Module 2 - Group 16. Looking for a simple, relia
 Contains any R code for cleaning, analysis, visualization, modeling or shiny application creation.
 - [Data_Cleaning.R](Code/Data_Cleaning.Rmd) code to load the data, create new metric variables for height and weight, and look for outliers.
 - [Model.R](Code/Model.Rmd) code for creating and analyzing AIC, BIC stepwise regression, and LASSO models.
-- [ShinyApp.R](Code/app.R) code to run Shiny App.
+- [ShinyApp.R](Code/ShinyApp.R) code to run Shiny App.
 
 ## Data 
 Contains any data raw and cleaned one.
