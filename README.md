@@ -7,4 +7,11 @@ Contains any R code for cleaning, analysis, visualization, modeling or shiny app
 - [Model.R](Code/Model.R) code for creating and analyzing AIC, BIC stepwise regression, and LASSO models.
 - [ShinyApp.R](Code/app.R) code to run Shiny App.
 
+## Data Folder
+Contains any data raw and cleaned one.
+- [BodyFat.csv](Data/BodyFat.csv) raw data.
+- [newdata.csv](Data/newdata.csv) cleaned data.
+
+
+
 
