@@ -1,0 +1,279 @@
+---
+title: "Untitled"
+author: "JINCHEN GONG"
+date: "2023-10-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(car)
+data<-read.csv("newdata.csv")
+data1 <-data %>% select(-c(X,IDNO,DENSITY))
+data1
+```
+```{r}
+summary(data1)
+```
+
+```{r}
+set.seed(123)
+sample_index <- sample(1:nrow(data1), size = 0.7 * nrow(data1))  
+
+train <- data1[sample_index, ]
+test <- data1[-sample_index, ]
+```
+
+```{r}
+#Model 1 simple linear regression
+model<-lm(BODYFAT~.,data = train)    
+summary(model)
+```
+##  using Mallow Cp to find the best variables
+
+```{r}
+library(leaps)
+X <- model.matrix(model)[,-1]
+Y <- train[,1]
+#Mallow’s Cp is a criteria based on the Model Error.
+g <- leaps(X, Y, nbest = 1)
+Cpplot(g)
+```
+
+
+```{r}
+# lowest cp
+#(2,7,11,14)seems to be a good selection
+cp.choice <- c(1,2,7,11,12,13,14)+1
+summary(model.cp <- lm(BODYFAT ~ ., data=data1[,c(1,cp.choice)]))
+#BODYFAT ~ WEIGHT + ABNOMEN + WRIST + ANKLE
+```
+```{r}
+calculate_mse <- function(train, test, model) {
+ # model.coeff <- round(summary(model)$coef,3)
+  R.Squared <- round(summary(model)$r.squared,4)
+  adj.r.squared <- round(summary(model)$adj.r.squared,4)
+  MSE.train <- round(mean(model$residuals^2),4)
+  MSE.test <- round(mean((predict(model, data.frame(test[,-1]))-test$BODYFAT)^2),4)
+  vif_values <- vif(model)
+  mse_df <- data.frame(
+    R.Squared= c(R.Squared),
+    adj.r.squared=adj.r.squared,
+    MSE.train=c(MSE.train),
+    MSE.test=c(MSE.test),
+    vif=paste(names(vif_values), round(vif_values, 2), collapse=", ")
+  )
+  
+  return(mse_df)
+ # return(cat("R.Squared:", R.Squared , "\n","MSE.train:", MSE.train, "\n","MSE.test:", MSE.test, "\n","vif:",vif))
+}
+```
+
+
+## AIC
+```{r}
+model.AIC <- step(model, k=2, direction = "both",trace=0)
+#model.AIC <- step(initial_model,criterion = "AIC")
+summary(model.AIC)
+```
+### m1
+
+```{r}
+m1<-lm(BODYFAT ~ AGE + WEIGHT + ADIPOSITY + NECK + ABDOMEN + HIP + THIGH + FOREARM + 
+         WRIST,data = train)
+summary(m1)
+```
+```{r}
+calculate_mse(train, test, m1)
+```
+
+## BIC
+```{r}
+model.BIC <- step(model, k=log(247),trace=0)
+summary(model.BIC)
+```
+### m2
+
+```{r}
+m2<-lm(BODYFAT ~ WEIGHT + ABDOMEN + FOREARM + WRIST,data = train)
+summary(m2)
+```
+
+
+
+```{r}
+png("Linear Regression .png")
+
+library(ggplot2)
+test$predicted <- predict(m2, newdata = test)
+
+ggplot(test, aes(x = WEIGHT, y = BODYFAT)) +
+  geom_point() +                 
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  
+  labs(x = "WEIGHT", y = "BODYFAT", title = "Scatter Plot with Linear Regression Fit") +
+  theme_minimal()
+
+dev.off() 
+```
+
+
+
+```{r}
+# Calculate predicted values and confidence intervals
+predictions <- predict(m2, interval = "confidence", level = 0.95) # 95% confidence level
+
+# Extract predicted, lower and upper limits
+predicted_values <- predictions[, 1]  
+lower_limit <- predictions[, 2]  
+upper_limit <- predictions[, 3]  
+
+predicted_values
+lower_limit
+upper_limit
+
+```
+
+
+```{r}
+
+png("Linear Regression with CI.png")
+
+library(ggplot2)
+
+# Calculate predicted values and confidence intervals
+predictions <- predict(m2, interval = "confidence", level = 0.95) # 95% 置信水平
+
+data <- data.frame(
+  WEIGHT = train$WEIGHT,
+  BODYFAT = train$BODYFAT,
+  Predicted = predictions[, 1],  
+  Lower_Limit = predictions[, 2], 
+  Upper_Limit = predictions[, 3]  
+)
+
+p <- ggplot(data, aes(x = WEIGHT, y = BODYFAT)) +
+  geom_point() +  
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  geom_ribbon(aes(ymin = Lower_Limit, ymax = Upper_Limit), fill = "red", alpha = 0.3) 
+
+p + labs(
+  x = "WEIGHT",
+  y = "BODYFAT",
+  title = "Linear Regression with Confidence Intervals"
+)
+
+dev.off() 
+```
+```{r}
+calculate_mse(train, test, m2)
+```
+
+
+## Another AIC Model
+
+```{r}
+base <- lm(BODYFAT~1,data=train)
+AIC.base <- step(base,direction="both", scope=list(lower=~1,upper=model),trace=F)
+summary(AIC.base)
+m3<-lm(BODYFAT ~ ABDOMEN + WEIGHT + WRIST + BICEPS + FOREARM + AGE + ANKLE ,data = train)
+summary(m3)
+```
+
+```{r}
+calculate_mse(train,test,m3)
+```
+## LASSO Regression
+
+```{r}
+library(glmnet)
+
+X_train <- model.matrix(BODYFAT ~ . - 1, data = train)  
+X_test <- model.matrix(BODYFAT ~ . - 1, data = test)
+
+Y_train <- train$BODYFAT
+Y_test <- test$BODYFAT
+
+lasso_model <- cv.glmnet(X_train, Y_train, alpha = 1)  # alpha = 1 
+
+
+lasso_predictions <- predict(lasso_model, s = "lambda.min", newx = X_test)
+mse <- mean((Y_test - lasso_predictions)^2)
+mse
+
+
+coef(lasso_model)
+
+
+```
+
+```{r}
+best_lambda <- lasso_model$lambda.min 
+best_lambda
+```
+
+```{r}
+# R²
+SST <- sum((Y_test - mean(Y_test))^2)  
+SSE <- sum((Y_test - lasso_predictions)^2)  
+R_squared <- 1 - SSE / SST
+R_squared 
+```
+## png("plot.png")
+
+
+### dev.off() 
+
+
+
+## BIC Model Assumption Test
+
+```{r}
+png("Residuals test.png")
+
+# par(mfrow = c(1,2))
+
+# Residuals test the linear relation hypothesis
+plot(m2, which = 1)
+
+dev.off()
+```
+
+
+```{r}
+
+png("Q-Q plot.png")
+
+# Normal probability plots (Q-Q plots) test the normality hypothesis
+plot(m2, which = 2)
+
+
+dev.off() 
+```
+
+
+```{r}
+# The residual autocorrelation tests the independence hypothesis
+acf(residuals(m2))
+```
+
+
+```{r}
+png("Residuals and Fitted Values.png")
+
+# Scatter plots of residuals and fitted values test the homoscedasticity hypothesis
+plot(m2, which = 3)
+
+dev.off() 
+```
+
+
+
+
+
+
+
+
