@@ -18,4 +18,4 @@ Contains all images related to the project.
 
 ## ShinyApp
 Click on the following link and enter relevant body measurements to predict your body fat rate.
-#### Shiny Link: https://lanxizhang.shinyapps.io/Group16/
+#### Shiny Link: https://lanxizhang.shinyapps.io/Code/
